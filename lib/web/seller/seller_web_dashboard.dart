@@ -1,9 +1,11 @@
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'seller_add_product_screen.dart';
 import 'seller_edit_product_screen.dart';
+import '../auth/web_login_screen.dart';
 
 class SellerWebDashboard extends StatefulWidget {
   const SellerWebDashboard({super.key});
@@ -47,14 +49,11 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     Map<String, dynamic> sellerData,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> products,
   ) {
-    // First, use the seller's saved shop name.
     for (final key in ['storeName', 'shopName', 'businessName']) {
       final name = _cleanName(sellerData[key]);
       if (name.isNotEmpty) return name;
     }
 
-    // If the seller profile has no shop name, use the existing
-    // shop name saved in the seller's product records.
     for (final product in products) {
       final data = product.data();
 
@@ -64,7 +63,6 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       }
     }
 
-    // Last fallback: Firebase Authentication display name.
     final displayName =
         _cleanName(FirebaseAuth.instance.currentUser?.displayName);
 
@@ -115,20 +113,33 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // LOGOUT
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to log out?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Confirm Logout',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to log out of your seller account?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: pink,
+              backgroundColor: darkPink,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -138,8 +149,22 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ),
     );
 
-    if (confirm == true) {
+    if (confirm != true || !mounted) return;
+
+    try {
       await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const WebLoginScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _message('Unable to log out: $e');
     }
   }
 
@@ -228,7 +253,6 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
           throw Exception('You cannot update this order.');
         }
 
-        // Sellers cannot mark an order as delivered.
         final allowed = {
           'pending': ['confirmed', 'rejected'],
           'confirmed': ['processing'],
@@ -359,6 +383,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       await _updateOrderStatus(orderId, status);
     }
   }
+
+  // MAIN BUILD
 
   @override
   Widget build(BuildContext context) {
@@ -506,6 +532,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       },
     );
   }
+
+  // SIDEBAR
 
   Widget _buildSidebar(String storeName) {
     final names = _pageNames(storeName);
@@ -658,6 +686,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // MOBILE NAVIGATION
+
   Widget _buildMobileNavigation(String storeName) {
     final names = _pageNames(storeName);
 
@@ -690,6 +720,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ),
     );
   }
+
+  // HEADER
 
   Widget _buildHeader(String storeName, bool isWide) {
     final title = _pageNames(storeName)[selectedPage];
@@ -766,6 +798,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // PAGE NAVIGATION
+
   Widget _buildSelectedPage(
     String storeName,
     Map<String, dynamic> sellerData,
@@ -789,6 +823,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
         return _dashboardPage(storeName, products, orders);
     }
   }
+
+  // PAGE HEADING
 
   Widget _pageHeading(String title, String subtitle) {
     return Padding(
@@ -815,6 +851,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ),
     );
   }
+
+  // SELLER DASHBOARD
 
   Widget _dashboardPage(
     String storeName,
@@ -930,6 +968,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // SHOP PAGE
+
   Widget _shopPage(
     String storeName,
     Map<String, dynamic> sellerData,
@@ -985,6 +1025,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ],
     );
   }
+
+  // PRODUCTS PAGE
 
   Widget _productsPage(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> products,
@@ -1142,6 +1184,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ],
     );
   }
+
+  // ORDERS PAGE
 
   Widget _ordersPage(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> orders,
@@ -1369,6 +1413,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // ANALYTICS PAGE
+
   Widget _analyticsPage(
     List<QueryDocumentSnapshot<Map<String, dynamic>>> products,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> orders,
@@ -1518,6 +1564,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 
+  // PERSONAL INFORMATION PAGE
+
   Widget _personalInformationPage(
     String storeName,
     Map<String, dynamic> sellerData,
@@ -1540,6 +1588,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
       ],
     );
   }
+
+  // REUSABLE WIDGETS
 
   Widget _statCard(
     String title,
@@ -1711,6 +1761,8 @@ class _SellerWebDashboardState extends State<SellerWebDashboard> {
     );
   }
 }
+
+// PERSONAL INFORMATION FORM
 
 class _PersonalInformationForm extends StatefulWidget {
   final String storeName;
