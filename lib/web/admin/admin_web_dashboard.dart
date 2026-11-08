@@ -13,7 +13,8 @@ class AdminWebDashboard extends StatefulWidget {
   const AdminWebDashboard({super.key});
 
   @override
-  State<AdminWebDashboard> createState() => _AdminWebDashboardState();
+  State<AdminWebDashboard> createState() =>
+      _AdminWebDashboardState();
 }
 
 class _AdminWebDashboardState extends State<AdminWebDashboard> {
@@ -38,6 +39,10 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
     Icons.settings_outlined,
   ];
 
+  // --------------------------------------------------
+  // PAGE NAVIGATION
+  // --------------------------------------------------
+
   Widget _buildPage() {
     switch (selectedIndex) {
       case 1:
@@ -54,199 +59,394 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
   }
 
   // --------------------------------------------------
-  // DASHBOARD HOME
+  // RESPONSIVE SIDEBAR
   // --------------------------------------------------
 
-  Widget _buildDashboardHome() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
+  Widget _buildSidebar({bool inDrawer = false}) {
+    return Container(
+      width: 250,
+      color: Colors.white,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Dashboard Overview',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Welcome to the Style4U administration panel.',
-            style: TextStyle(color: Colors.grey),
-          ),
           const SizedBox(height: 28),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('Users')
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return const Text(
-                  'Unable to load user statistics.',
-                );
-              }
 
-              if (!snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-
-              final users = snapshot.data!.docs;
-
-              final buyers = users.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data['role'] == 'user' ||
-                    data['role'] == 'buyer';
-              }).length;
-
-              final sellers = users.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data['role'] == 'seller';
-              }).length;
-
-              final admins = users.where((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                return data['role'] == 'admin';
-              }).length;
-
-              return Wrap(
-                spacing: 18,
-                runSpacing: 18,
-                children: [
-                  _statCard(
-                    'Total Users',
-                    users.length.toString(),
-                    Icons.people,
-                    Colors.blue,
-                  ),
-                  _statCard(
-                    'Buyers',
-                    buyers.toString(),
-                    Icons.person_outline,
-                    Colors.green,
-                  ),
-                  _statCard(
-                    'Sellers',
-                    sellers.toString(),
-                    Icons.store,
-                    pink,
-                  ),
-                  _statCard(
-                    'Admins',
-                    admins.toString(),
-                    Icons.admin_panel_settings,
-                    Colors.orange,
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 30),
-
-          // PLATFORM STATUS
+          // LOGO AND APP NAME
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('AppSettings')
                 .doc('platform')
                 .snapshots(),
             builder: (context, snapshot) {
-              final data =
-                  snapshot.data?.data() as Map<String, dynamic>?;
+              final data = snapshot.data?.data()
+                  as Map<String, dynamic>?;
 
-              final isActive = data?['isActive'] ?? true;
               final appName = data?['appName'] ?? 'Style4U';
+              final logoUrl = data?['appLogoUrl'] as String?;
 
-              return Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Platform Status',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              return Column(
+                children: [
+                  _buildLogo(logoUrl),
+                  const SizedBox(height: 10),
+                  Text(
+                    appName.toString(),
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: darkPink,
                     ),
-                    const SizedBox(height: 14),
-                    Text('Application: $appName'),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          isActive
-                              ? Icons.check_circle
-                              : Icons.cancel,
-                          color: isActive ? Colors.green : Colors.red,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isActive
-                              ? 'Platform is Active'
-                              : 'Platform is Deactivated',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color:
-                                isActive ? Colors.green : Colors.red,
-                          ),
-                        ),
-                      ],
+                  ),
+                  const Text(
+                    'ADMIN PANEL',
+                    style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 2,
+                      color: Colors.grey,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               );
             },
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Quick Access',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+
+          const SizedBox(height: 35),
+
+          // NAVIGATION MENU
+          Expanded(
+            child: ListView.builder(
+              itemCount: menuItems.length,
+              itemBuilder: (context, index) {
+                final selected = selectedIndex == index;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  child: ListTile(
+                    selected: selected,
+                    selectedTileColor:
+                        pink.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    leading: Icon(
+                      menuIcons[index],
+                      color: selected ? darkPink : Colors.grey,
+                    ),
+                    title: Text(
+                      menuItems[index],
+                      style: TextStyle(
+                        color: selected
+                            ? darkPink
+                            : Colors.black87,
+                        fontWeight: selected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    onTap: () {
+                      if (inDrawer) {
+                        Navigator.pop(context);
+                      }
+
+                      setState(() {
+                        selectedIndex = index;
+                      });
+                    },
+                  ),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _quickButton(
-                'Manage Users',
-                Icons.people,
-                () => setState(() => selectedIndex = 1),
-              ),
-              _quickButton(
-                'Manage Sellers',
-                Icons.store,
-                () => setState(() => selectedIndex = 2),
-              ),
-              _quickButton(
-                'Seller Applications',
-                Icons.assignment_outlined,
-                () => setState(() => selectedIndex = 3),
-              ),
-              _quickButton(
-                'Platform Settings',
-                Icons.settings,
-                () => setState(() => selectedIndex = 4),
-              ),
-            ],
+
+          const Divider(),
+
+          // LOGOUT
+          ListTile(
+            leading: const Icon(
+              Icons.logout,
+              color: Colors.red,
+            ),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: Colors.red),
+            ),
+            onTap: () {
+              if (inDrawer) {
+                Navigator.pop(context);
+              }
+              _logout();
+            },
           ),
+
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
   // --------------------------------------------------
-  // STAT CARD
+  // DASHBOARD HOME
+  // --------------------------------------------------
+
+  Widget _buildDashboardHome() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+
+        final horizontalPadding =
+            screenWidth < 600 ? 16.0 : 28.0;
+
+        final cardWidth = screenWidth < 500
+            ? screenWidth - (horizontalPadding * 2)
+            : screenWidth >= 1100
+                ? 220.0
+                : (screenWidth -
+                    (horizontalPadding * 2) -
+                    18) / 2;
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(horizontalPadding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Dashboard Overview',
+                style: TextStyle(
+                  fontSize: screenWidth < 600 ? 22 : 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Welcome to the Style4U administration panel.',
+                style: TextStyle(color: Colors.grey),
+              ),
+
+              const SizedBox(height: 28),
+
+              // USER STATISTICS
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Text(
+                      'Unable to load user statistics.',
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  final users = snapshot.data!.docs;
+
+                  final buyers = users.where((doc) {
+                    final data =
+                        doc.data() as Map<String, dynamic>;
+
+                    return data['role'] == 'user' ||
+                        data['role'] == 'buyer';
+                  }).length;
+
+                  final sellers = users.where((doc) {
+                    final data =
+                        doc.data() as Map<String, dynamic>;
+
+                    return data['role'] == 'seller';
+                  }).length;
+
+                  final admins = users.where((doc) {
+                    final data =
+                        doc.data() as Map<String, dynamic>;
+
+                    return data['role'] == 'admin';
+                  }).length;
+
+                  return Wrap(
+                    spacing: 18,
+                    runSpacing: 18,
+                    children: [
+                      _statCard(
+                        'Total Users',
+                        users.length.toString(),
+                        Icons.people,
+                        Colors.blue,
+                        cardWidth,
+                      ),
+
+                      _statCard(
+                        'Buyers',
+                        buyers.toString(),
+                        Icons.person_outline,
+                        Colors.green,
+                        cardWidth,
+                      ),
+
+                      _statCard(
+                        'Sellers',
+                        sellers.toString(),
+                        Icons.store,
+                        pink,
+                        cardWidth,
+                      ),
+
+                      _statCard(
+                        'Admins',
+                        admins.toString(),
+                        Icons.admin_panel_settings,
+                        Colors.orange,
+                        cardWidth,
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 30),
+
+              // PLATFORM STATUS
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('AppSettings')
+                    .doc('platform')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  final data = snapshot.data?.data()
+                      as Map<String, dynamic>?;
+
+                  final isActive = data?['isActive'] ?? true;
+                  final appName =
+                      data?['appName'] ?? 'Style4U';
+
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.grey.shade200,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Platform Status',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        Text('Application: $appName'),
+
+                        const SizedBox(height: 8),
+
+                        Wrap(
+                          crossAxisAlignment:
+                              WrapCrossAlignment.center,
+                          spacing: 8,
+                          children: [
+                            Icon(
+                              isActive
+                                  ? Icons.check_circle
+                                  : Icons.cancel,
+                              color: isActive
+                                  ? Colors.green
+                                  : Colors.red,
+                            ),
+
+                            Text(
+                              isActive
+                                  ? 'Platform is Active'
+                                  : 'Platform is Deactivated',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isActive
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              const Text(
+                'Quick Access',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // QUICK ACCESS BUTTONS
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _quickButton(
+                    'Manage Users',
+                    Icons.people,
+                    () => _navigateTo(1),
+                  ),
+
+                  _quickButton(
+                    'Manage Sellers',
+                    Icons.store,
+                    () => _navigateTo(2),
+                  ),
+
+                  _quickButton(
+                    'Seller Applications',
+                    Icons.assignment_outlined,
+                    () => _navigateTo(3),
+                  ),
+
+                  _quickButton(
+                    'Platform Settings',
+                    Icons.settings,
+                    () => _navigateTo(4),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --------------------------------------------------
+  // NAVIGATION HELPER
+  // --------------------------------------------------
+
+  void _navigateTo(int index) {
+    setState(() {
+      selectedIndex = index;
+    });
+  }
+
+  // --------------------------------------------------
+  // STATISTICS CARD
   // --------------------------------------------------
 
   Widget _statCard(
@@ -254,37 +454,49 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
     String value,
     IconData icon,
     Color color,
+    double width,
   ) {
     return Container(
-      width: 220,
+      width: width,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: Colors.grey.shade200,
+        ),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.12),
+            backgroundColor:
+                color.withValues(alpha: 0.12),
             child: Icon(icon, color: color),
           ),
+
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.bold,
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 23,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Text(
-                title,
-                style: const TextStyle(color: Colors.grey),
-              ),
-            ],
+
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -334,7 +546,7 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
   }
 
   // --------------------------------------------------
-  // LOCAL LOGO WITH OPTIONAL FIRESTORE LOGO OVERRIDE
+  // LOGO WITH FIRESTORE OVERRIDE
   // --------------------------------------------------
 
   Widget _buildLogo(String? logoUrl) {
@@ -376,171 +588,80 @@ class _AdminWebDashboardState extends State<AdminWebDashboard> {
   }
 
   // --------------------------------------------------
-  // MAIN DASHBOARD
+  // MAIN RESPONSIVE LAYOUT
   // --------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FA),
-      body: Row(
-        children: [
-          // SIDEBAR
-          Container(
-            width: 250,
-            color: Colors.white,
-            child: Column(
-              children: [
-                const SizedBox(height: 28),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        final isSmall = constraints.maxWidth < 600;
 
-                // LOGO AND APP NAME
-                StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('AppSettings')
-                      .doc('platform')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    final data =
-                        snapshot.data?.data() as Map<String, dynamic>?;
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F8FA),
 
-                    final appName = data?['appName'] ?? 'Style4U';
-                    final logoUrl = data?['appLogoUrl'] as String?;
-
-                    return Column(
-                      children: [
-                        _buildLogo(logoUrl),
-                        const SizedBox(height: 10),
-                        Text(
-                          appName.toString(),
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.bold,
-                            color: darkPink,
-                          ),
-                        ),
-                        const Text(
-                          'ADMIN PANEL',
-                          style: TextStyle(
-                            fontSize: 11,
-                            letterSpacing: 2,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+          // MOBILE / TABLET DRAWER
+          drawer: isWide
+              ? null
+              : Drawer(
+                  child: _buildSidebar(inDrawer: true),
                 ),
 
-                const SizedBox(height: 35),
+          // TOP APP BAR
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: !isWide,
 
-                // MENU
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: menuItems.length,
-                    itemBuilder: (context, index) {
-                      final selected = selectedIndex == index;
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        child: ListTile(
-                          selected: selected,
-                          selectedTileColor:
-                              pink.withValues(alpha: 0.12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          leading: Icon(
-                            menuIcons[index],
-                            color:
-                                selected ? darkPink : Colors.grey,
-                          ),
-                          title: Text(
-                            menuItems[index],
-                            style: TextStyle(
-                              color: selected
-                                  ? darkPink
-                                  : Colors.black87,
-                              fontWeight: selected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          onTap: () {
-                            setState(() {
-                              selectedIndex = index;
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                const Divider(),
-
-                ListTile(
-                  leading: const Icon(
-                    Icons.logout,
-                    color: Colors.red,
-                  ),
-                  title: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: _logout,
-                ),
-
-                const SizedBox(height: 12),
-              ],
+            title: Text(
+              menuItems[selectedIndex],
+              style: TextStyle(
+                fontSize: isSmall ? 17 : 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
+
+            actions: [
+              const CircleAvatar(
+                backgroundColor: Color(0xFFFCE8EF),
+                child: Icon(
+                  Icons.admin_panel_settings,
+                  color: darkPink,
+                ),
+              ),
+
+              if (!isSmall) ...[
+                const SizedBox(width: 10),
+
+                const Text(
+                  'Administrator',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+
+              const SizedBox(width: 20),
+            ],
           ),
 
-          // MAIN CONTENT
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  height: 70,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                  ),
-                  color: Colors.white,
-                  child: Row(
-                    children: [
-                      Text(
-                        menuItems[selectedIndex],
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      const CircleAvatar(
-                        backgroundColor: Color(0xFFFCE8EF),
-                        child: Icon(
-                          Icons.admin_panel_settings,
-                          color: darkPink,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Administrator',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(child: _buildPage()),
-              ],
-            ),
+          // MAIN BODY
+          body: Row(
+            children: [
+              // DESKTOP SIDEBAR
+              if (isWide) _buildSidebar(),
+
+              // PAGE CONTENT
+              Expanded(
+                child: _buildPage(),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
